@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Bars3Icon, 
   XMarkIcon, 
@@ -8,21 +8,41 @@ import {
   UserGroupIcon, 
   CurrencyDollarIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  DocumentTextIcon,
+  KeyIcon,
+  ShieldCheckIcon,
+  Cog6ToothIcon,
+  PencilSquareIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 export default function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, userData, logout } = useAuth();
   const pathname = usePathname();
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // Close menu when route changes
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -37,14 +57,21 @@ export default function MobileHeader() {
   }, [isMenuOpen]);
 
   const menuItems = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
+    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Properties', href: '/properties', icon: BuildingOfficeIcon },
-    { name: 'Tenants', href: '/tenants', icon: UserGroupIcon },
+    { name: 'Tenants & Owners', href: '/tenants', icon: UserGroupIcon },
     { name: 'Payments', href: '/payments', icon: CurrencyDollarIcon },
+    { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
+    { name: 'Visitor Management', href: '/visitors', icon: KeyIcon },
   ];
 
+  // Add admin-only menu items
   if (userData?.role === 'superadmin') {
-    menuItems.push({ name: 'Users', href: '/users', icon: UserIcon });
+    menuItems.push(
+      { name: 'Users', href: '/users', icon: UserIcon },
+      { name: 'Roles & Permissions', href: '/roles', icon: ShieldCheckIcon },
+      { name: 'Settings', href: '/settings', icon: Cog6ToothIcon }
+    );
   }
 
   return (
@@ -58,18 +85,60 @@ export default function MobileHeader() {
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            <Link href="/" className="ml-4 text-xl font-bold text-primary">
+            <Link href="/dashboard" className="ml-4 text-xl font-bold text-primary">
               Rent Collection
             </Link>
           </div>
           
           {user ? (
-            <button
-              onClick={logout}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark"
-            >
-              Logout
-            </button>
+            <div className="flex items-center space-x-3" ref={profileRef}>
+              <div 
+                className="flex items-center space-x-2 cursor-pointer"
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+              >
+                <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200">
+                  {userData?.photoURL ? (
+                    <Image
+                      src={userData.photoURL}
+                      alt={userData.name || 'User'}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-primary text-white">
+                      {userData?.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                </div>
+                <div className="hidden sm:block">
+                  <div className="flex items-center">
+                    <p className="text-sm font-medium text-gray-900">{userData?.name || 'User'}</p>
+                    <ChevronDownIcon className="h-4 w-4 ml-1 text-gray-500" />
+                  </div>
+                  <p className="text-xs text-gray-500 capitalize">{userData?.role || 'User'}</p>
+                </div>
+              </div>
+
+              {/* Profile Dropdown */}
+              {isProfileOpen && (
+                <div className="absolute top-14 right-4 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200">
+                  <Link
+                    href="/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <PencilSquareIcon className="h-5 w-5 mr-2 text-gray-500" />
+                    Edit Profile
+                  </Link>
+                  <button
+                    onClick={logout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2 text-gray-500" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               href="/login"
@@ -138,20 +207,34 @@ export default function MobileHeader() {
             {user && (
               <div className="p-4 border-t">
                 <div className="flex items-center space-x-3">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+                    {userData?.photoURL ? (
+                      <Image
+                        src={userData.photoURL}
+                        alt={userData.name || 'User'}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-primary text-white text-lg">
+                        {userData?.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {userData?.name || 'User'}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 truncate capitalize">
                       {userData?.role || 'Role'}
                     </p>
                   </div>
-                  <button
-                    onClick={logout}
+                  <Link
+                    href="/profile"
                     className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
                   >
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                  </button>
+                    <PencilSquareIcon className="h-5 w-5" />
+                  </Link>
                 </div>
               </div>
             )}

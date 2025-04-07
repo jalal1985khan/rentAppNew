@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { FirebaseError } from 'firebase/app';
+import { RecaptchaVerifier, getAuth } from 'firebase/auth';
 
 export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -12,11 +14,22 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { sendOTP } = useAuth();
+  const [verificationId, setVerificationId] = useState('');
   const router = useRouter();
+  const { signInWithPhone, verifyOTP } = useAuth();
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
 
   useEffect(() => {
     setIsAnimating(true);
+    // Initialize reCAPTCHA
+    const auth = getAuth();
+    recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      callback: () => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber to be called
+      },
+    });
   }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -28,11 +41,30 @@ export default function LoginPage() {
       const formattedPhone = phoneNumber.startsWith('+91') 
         ? phoneNumber 
         : `+91${phoneNumber}`;
+      
+      if (!recaptchaRef.current) {
+        throw new Error('reCAPTCHA not initialized');
+      }
 
-      await sendOTP(formattedPhone);
+      const id = await signInWithPhone(formattedPhone);
+      setVerificationId(id);
       setShowOtpInput(true);
-    } catch (err) {
-      setError('Failed to send OTP. Please try again.');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/invalid-phone-number':
+            setError('Please enter a valid phone number');
+            break;
+          case 'auth/too-many-requests':
+            setError('Too many attempts. Please try again later');
+            break;
+          default:
+            setError('Failed to send OTP. Please try again');
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again');
+      }
     } finally {
       setLoading(false);
     }
@@ -44,11 +76,24 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const confirmationResult = (window as any).confirmationResult;
-      await confirmationResult.confirm(otp);
+      await verifyOTP(verificationId, otp);
       router.push('/');
-    } catch (err) {
-      setError('Invalid OTP. Please try again.');
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/invalid-verification-code':
+            setError('Invalid OTP. Please try again');
+            break;
+          case 'auth/code-expired':
+            setError('OTP has expired. Please request a new one');
+            break;
+          default:
+            setError('Failed to verify OTP. Please try again');
+        }
+      } else {
+        setError('An unexpected error occurred. Please try again');
+      }
     } finally {
       setLoading(false);
     }
@@ -57,14 +102,14 @@ export default function LoginPage() {
   return (
     <>
       {/* App-like Header */}
-      <div className={`pt-12 pb-8 px-4 transform transition-all duration-500 ${isAnimating ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+      <div className={`px-4 transform transition-all duration-500 ${isAnimating ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
         <div className="flex items-center justify-center">
-          <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center shadow-xl">
-            <DevicePhoneMobileIcon className="h-12 w-12 text-primary" />
+          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl">
+            <DevicePhoneMobileIcon className="h-12 w-12 text-purple-600" />
           </div>
         </div>
         <h1 className="mt-8 text-4xl font-bold text-black text-center">
-          Welcome to Rent Collection
+          Welcome
         </h1>
         <p className="mt-4 text-black/90 text-center text-lg">
           Sign in to manage your properties
@@ -72,12 +117,15 @@ export default function LoginPage() {
       </div>
 
       {/* Login Form */}
-      <div className={`flex-1 bg-white border border-gray-300 rounded-t-[3rem] px-6 pt-10 pb-8 transform transition-all duration-500 ${isAnimating ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+      <div className={`mt-20 flex-1 bg-white border border-gray-300 rounded-t-[3rem] px-6 pt-10 pb-8 transform transition-all duration-500 ${isAnimating ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl shadow-sm">
             {error}
           </div>
         )}
+
+        {/* reCAPTCHA Container */}
+        <div id="recaptcha-container" className="hidden"></div>
 
         {!showOtpInput ? (
           <form onSubmit={handleSendOtp} className="space-y-8">
@@ -95,7 +143,7 @@ export default function LoginPage() {
                   id="phone"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                  className="block w-full pl-20 pr-5 py-5 border border-purple-500 bg-gray-50 rounded-2xl text-xl focus:ring-1 focus:ring-purple-500 focus:bg-white transition-all duration-200 text-black"
+                  className="block w-full pl-20 pr-5 py-5 border border-gray-300 bg-gray-50 rounded-2xl text-xl text-black focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600/50 focus:bg-white transition-all duration-200"
                   placeholder="9876543210"
                   required
                   pattern="[0-9]{10}"
@@ -107,11 +155,11 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 px-4 bg-purple-500 rounded-2xl text-white font-semibold text-xl shadow-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-all duration-200"
+              className="w-full py-5 px-4 bg-purple-600/50 rounded-2xl text-white font-semibold text-xl shadow-lg hover:bg-purple-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-all duration-200"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -134,7 +182,7 @@ export default function LoginPage() {
                 id="otp"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                className="block w-full px-5 py-5 border-0 bg-gray-50 rounded-2xl text-2xl text-center tracking-widest focus:ring-2 focus:ring-primary focus:bg-white transition-all duration-200"
+                className="block w-full px-5 py-5 border border-gray-300 bg-gray-50 rounded-2xl text-2xl text-center tracking-widest text-black focus:outline-none focus:ring-2 focus:ring-purple-600/50 focus:border-purple-600/50 focus:bg-white transition-all duration-200"
                 placeholder="000000"
                 required
                 maxLength={6}
@@ -144,7 +192,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 px-4 bg-primary rounded-2xl text-white font-semibold text-xl shadow-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-all duration-200"
+              className="w-full py-5 px-4 bg-purple-600/50 rounded-2xl text-white font-semibold text-xl shadow-lg hover:bg-purple-600/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 transition-all duration-200"
             >
               {loading ? (
                 <span className="flex items-center justify-center">

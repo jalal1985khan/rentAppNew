@@ -1,106 +1,137 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import { useRouter } from 'next/navigation';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { useSession, signIn, signOut } from 'next-auth/react';
+import { getAuth, signInWithPhoneNumber, PhoneAuthProvider, signInWithCredential, RecaptchaVerifier } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
 
-interface AuthContextType {
-  user: FirebaseUser | null;
-  userData: any | null;
-  loading: boolean;
-  logout: () => Promise<void>;
-  sendOTP: (phoneNumber: string) => Promise<void>;
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+interface UserData {
+  id: string;
+  name: string | null;
+  phone: string;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  userData: null,
-  loading: true,
-  logout: async () => {},
-  sendOTP: async () => {},
-});
+interface SessionUser {
+  id: string;
+  phone: string;
+}
+
+interface AuthContextType {
+  user: SessionUser | null;
+  userData: UserData | null;
+  loading: boolean;
+  signInWithPhone: (phoneNumber: string) => Promise<string>;
+  verifyOTP: (verificationId: string, otp: string) => Promise<void>;
+  signOut: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userData, setUserData] = useState<any | null>(null);
+  const { data: session, status } = useSession();
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      
-      if (user) {
+    const fetchUserData = async () => {
+      if (session?.user?.phone) {
         try {
-          await connectDB();
-          const userDoc = await User.findOne({ phone: user.phoneNumber });
-          setUserData(userDoc);
+          const response = await fetch(`/api/users?phone=${encodeURIComponent(session.user.phone)}`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserData(data);
+          }
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
-      } else {
-        setUserData(null);
       }
-      
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    fetchUserData();
+  }, [session]);
 
-  const logout = async () => {
+  const signInWithPhone = async (phoneNumber: string): Promise<string> => {
     try {
-      await firebaseSignOut(auth);
-      setUserData(null);
-      router.push('/login');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
-  const sendOTP = async (phoneNumber: string) => {
-    try {
-      // Format phone number if not already formatted
-      const formattedPhone = phoneNumber.startsWith('+91') 
-        ? phoneNumber 
-        : `+91${phoneNumber}`;
-
-      // Initialize reCAPTCHA
-      const recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      const appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved, allow sendOtp
-        }
       });
 
-      // Send OTP
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        recaptchaVerifier
-      );
-
-      // Store confirmation result in window object for verification
-      (window as any).confirmationResult = confirmationResult;
+      const result = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      setConfirmationResult(result);
+      return result.verificationId;
     } catch (error) {
       console.error('Error sending OTP:', error);
       throw error;
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, userData, loading, logout, sendOTP }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const verifyOTP = async (verificationId: string, otp: string): Promise<void> => {
+    try {
+      if (!confirmationResult) {
+        throw new Error('No confirmation result found. Please try sending OTP again.');
+      }
+
+      const result = await confirmationResult.confirm(otp);
+      
+      if (result.user) {
+        await signIn('firebase-phone', {
+          id: result.user.uid,
+          phone: result.user.phoneNumber,
+          redirect: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      throw error;
+    }
+  };
+
+  const handleSignOut = async (): Promise<void> => {
+    try {
+      // Sign out from Firebase
+      await auth.signOut();
+      // Sign out from NextAuth
+      await signOut({ redirect: false });
+      // Clear local state
+      setUserData(null);
+      setConfirmationResult(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
+  };
+
+  const value = {
+    user: session?.user as SessionUser | null,
+    userData,
+    loading: status === 'loading' || loading,
+    signInWithPhone,
+    verifyOTP,
+    signOut: handleSignOut,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => useContext(AuthContext); 
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+} 
