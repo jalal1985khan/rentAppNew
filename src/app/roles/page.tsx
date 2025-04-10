@@ -1,4 +1,5 @@
 import { PlusIcon } from '@heroicons/react/24/outline';
+import MobileHeader from '@/components/MobileHeader';
 
 const roles = [
   {
@@ -38,6 +39,7 @@ const permissions = [
 export default function RolesPage() {
   return (
     <div className="space-y-6">
+      <MobileHeader />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Roles & Permissions</h1>
         <button className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">

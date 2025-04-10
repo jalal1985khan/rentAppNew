@@ -90,7 +90,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                   id="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                  className="block w-full pl-10 h-14 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                   placeholder="Property Name"
                   required
                 />
@@ -106,7 +106,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                   id="address"
                   value={formData.address}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                  className="block w-full h-14 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                   placeholder="Property Address"
                   required
                 />
@@ -123,7 +123,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                     id="totalUnits"
                     value={formData.totalUnits}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    className="block w-full h-14 text-black pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                     placeholder="Total Units"
                     required
                     min="0"
@@ -140,7 +140,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                     id="monthlyRent"
                     value={formData.monthlyRent}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    className="block w-full text-black h-14 pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                     placeholder="Monthly Rent"
                     required
                     min="0"
@@ -149,15 +149,15 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
               </div>
 
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-                </div>
+                </div> */}
                 <select
                   name="propertyType"
                   id="propertyType"
                   value={formData.propertyType}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                  className="block w-full h-14 text-black pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                 >
                   {propertyTypes.map((type) => (
                     <option key={type.id} value={type.id}>
@@ -176,7 +176,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                         type="checkbox"
                         checked={formData.amenities.includes(amenity.id)}
                         onChange={() => handleAmenityChange(amenity.id)}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                        className="size-8 text-primary focus:ring-primary border-gray-300 rounded"
                       />
                       <span className="ml-2 text-sm text-gray-700">{amenity.name}</span>
                     </label>
@@ -194,7 +194,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
                   rows={3}
                   value={formData.description}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                  className="block h-40 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
                   placeholder="Property Description"
                 />
               </div>
@@ -210,7 +210,7 @@ export default function PropertyForm({ initialData, onSubmit }: PropertyFormProp
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-black bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                className="h-12 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-black bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 {initialData ? 'Update Property' : 'Add Property'}
               </button>

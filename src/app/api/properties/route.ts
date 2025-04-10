@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import Property from '@/models/Property';
 
 export async function GET() {
   try {
     console.log('Attempting to connect to MongoDB...');
-    await connectDB();
+    const { db } = await connectToDatabase();
     console.log('Successfully connected to MongoDB');
     
-    const properties = await Property.find({}).sort({ createdAt: -1 });
+    const properties = await db.collection('properties').find({}).sort({ createdAt: -1 }).toArray();
     console.log('Found properties:', properties);
     
     return NextResponse.json(properties);
@@ -25,10 +25,16 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log('Attempting to connect to MongoDB...');
-    await connectDB();
+    const { db } = await connectToDatabase();
     console.log('Successfully connected to MongoDB');
     
-    const property = await Property.create(body);
+    const result = await db.collection('properties').insertOne({
+      ...body,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    
+    const property = await db.collection('properties').findOne({ _id: result.insertedId });
     console.log('Created property:', property);
     
     return NextResponse.json(property, { status: 201 });

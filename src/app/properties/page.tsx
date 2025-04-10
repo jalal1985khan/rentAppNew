@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-
+import MobileHeader from '@/components/MobileHeader';
 interface Property {
   _id: string;
   name: string;
@@ -69,15 +69,19 @@ export default function PropertiesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="p-4 space-y-4">
+      <MobileHeader />
+      <div className="mt-4 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">Properties</h1>
-          <button
-            onClick={() => router.push('/properties/add')}
-            className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <PlusIcon className="h-6 w-6" />
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => router.push('/properties/add')}
+              className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Add Property
+            </button>    
+          </div>
+       
         </div>
 
         <div className="relative">
@@ -89,7 +93,7 @@ export default function PropertiesPage() {
             placeholder="Search properties..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="h-14 block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           />
         </div>
 

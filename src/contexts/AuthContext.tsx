@@ -22,6 +22,8 @@ interface UserData {
   id: string;
   name: string | null;
   phone: string;
+  photoURL?: string;
+  role?: string;
 }
 
 interface SessionUser {

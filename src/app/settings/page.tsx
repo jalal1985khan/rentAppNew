@@ -6,7 +6,7 @@ import {
   GlobeAltIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
-
+import MobileHeader from '@/components/MobileHeader';
 const settings = [
   {
     id: 1,
@@ -85,6 +85,7 @@ const settings = [
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
+      <MobileHeader />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
         <button className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
